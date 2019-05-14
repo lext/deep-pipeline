@@ -6,7 +6,8 @@
 from setuptools import setup, find_packages
 
 
-requirements = ('numpy', 'opencv-python', 'torch>=1.0.0', 'solt>=0.1.5')
+requirements = ('numpy', 'opencv-python',
+                'torch>=1.0.0', 'solt>=0.1.5', 'torchvision', 'tqdm', 'termcolor')
 
 setup_requirements = ()
 
