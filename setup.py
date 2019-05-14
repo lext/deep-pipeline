@@ -35,7 +35,7 @@ setup(
     include_package_data=True,
     keywords='deeep learning, image segmentation, image-classification',
     name='deep-pipeline',
-    packages=find_packages(include=['dpipeline']),
+    packages=find_packages(include=['deeppipeline']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
