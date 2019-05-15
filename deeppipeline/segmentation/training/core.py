@@ -3,10 +3,7 @@ from tqdm import tqdm
 import gc
 import numpy as np
 
-import operator
 from termcolor import colored
-import os
-
 
 from deeppipeline.kvs import GlobalKVS
 from deeppipeline.segmentation.evaluation import metrics
@@ -61,33 +58,6 @@ def pass_epoch(net, loader, optimizer, criterion):
         pbar.close()
 
     return running_loss / n_batches, confusion_matrix
-
-
-def save_checkpoint(net, val_metric_name, comparator='lt'):
-    if isinstance(net, torch.nn.DataParallel):
-        net = net.module
-
-    kvs = GlobalKVS()
-    fold_id = kvs['cur_fold']
-    epoch = kvs['cur_epoch']
-    val_metric = kvs[f'val_metrics_fold_[{fold_id}]'][-1][0][val_metric_name]
-    comparator = getattr(operator, comparator)
-    cur_snapshot_name = os.path.join(os.path.join(kvs['args'].workdir, 'snapshots', kvs['snapshot_name'],
-                                     f'fold_{fold_id}_epoch_{epoch}.pth'))
-
-    if kvs['prev_model'] is None:
-        print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
-        torch.save(net.state_dict(), cur_snapshot_name)
-        kvs.update('prev_model', cur_snapshot_name)
-        kvs.update('best_val_metric', val_metric)
-
-    else:
-        if comparator(val_metric, kvs['best_val_metric']):
-            print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
-            os.remove(kvs['prev_model'])
-            torch.save(net.state_dict(), cur_snapshot_name)
-            kvs.update('prev_model', cur_snapshot_name)
-            kvs.update('best_val_metric', val_metric)
 
 
 def log_metrics(writer, train_loss, val_loss, conf_matrix):

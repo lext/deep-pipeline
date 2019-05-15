@@ -1,11 +1,12 @@
 import torch
 import numpy as np
 import time
-import os
+from termcolor import colored
 import subprocess
 import socket
 from torch import optim
-
+import os
+import operator
 from deeppipeline.kvs import GlobalKVS
 
 
@@ -78,4 +79,31 @@ def init_optimizer(net):
         return optim.SGD(net.parameters(), lr=kvs['args'].lr, weight_decay=kvs['args'].wd, momentum=0.9)
     else:
         raise NotImplementedError
+
+
+def save_checkpoint(net, val_metric_name, comparator='lt'):
+    if isinstance(net, torch.nn.DataParallel):
+        net = net.module
+
+    kvs = GlobalKVS()
+    fold_id = kvs['cur_fold']
+    epoch = kvs['cur_epoch']
+    val_metric = kvs[f'val_metrics_fold_[{fold_id}]'][-1][0][val_metric_name]
+    comparator = getattr(operator, comparator)
+    cur_snapshot_name = os.path.join(os.path.join(kvs['args'].workdir, 'snapshots', kvs['snapshot_name'],
+                                     f'fold_{fold_id}_epoch_{epoch}.pth'))
+
+    if kvs['prev_model'] is None:
+        print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
+        torch.save(net.state_dict(), cur_snapshot_name)
+        kvs.update('prev_model', cur_snapshot_name)
+        kvs.update('best_val_metric', val_metric)
+
+    else:
+        if comparator(val_metric, kvs['best_val_metric']):
+            print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
+            os.remove(kvs['prev_model'])
+            torch.save(net.state_dict(), cur_snapshot_name)
+            kvs.update('prev_model', cur_snapshot_name)
+            kvs.update('best_val_metric', val_metric)
 
