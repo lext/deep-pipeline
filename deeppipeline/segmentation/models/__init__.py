@@ -1,2 +1,2 @@
 from ._unet import UNet
-from ._tools import init_model
+from ._functions import init_model
