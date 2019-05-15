@@ -53,8 +53,9 @@ def numpy2tens(x: np.ndarray, dtype='f') -> torch.Tensor:
 
     """
     x = x.squeeze()
+    x = torch.from_numpy(x)
     if x.dim() == 2:  # CxHxW format
-        x = torch.from_numpy(x).unsqueeze(0)
+        x = x.unsqueeze(0)
 
     if dtype == 'f':
         return x.float()

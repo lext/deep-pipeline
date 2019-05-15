@@ -5,8 +5,9 @@ import numpy as np
 
 import operator
 from termcolor import colored
-
 import os
+
+
 from deeppipeline.kvs import GlobalKVS
 from deeppipeline.segmentation.evaluation import metrics
 from deeppipeline.segmentation.evaluation.metrics import calculate_dice, calculate_iou
@@ -121,3 +122,6 @@ def log_metrics(writer, train_loss, val_loss, conf_matrix):
 
     kvs.update(f'losses_fold_[{kvs["cur_fold"]}]', to_log)
     kvs.update(f'val_metrics_fold_[{kvs["cur_fold"]}]', val_metrics)
+
+
+

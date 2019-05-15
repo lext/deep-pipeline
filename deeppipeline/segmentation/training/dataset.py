@@ -48,7 +48,7 @@ def init_data_processing(img_reader=read_rgb_ocv, mask_reader=read_gs_binary_mas
     kvs = GlobalKVS()
 
     dataset = SegmentationDataset(split=kvs['metadata'],
-                                  trf=kvs['train_augs'],
+                                  trf=kvs['train_trf'],
                                   read_img=img_reader,
                                   read_mask=mask_reader)
 
@@ -69,7 +69,7 @@ def init_data_processing(img_reader=read_rgb_ocv, mask_reader=read_gs_binary_mas
     norm_trf = partial(normalize_channel_wise, mean=mean_vector, std=std_vector)
 
     train_trf = tvt.Compose([
-        kvs['train_augs'],
+        kvs['train_trf'],
         partial(apply_by_index, transform=norm_trf, idx=0)
     ])
 

@@ -50,7 +50,7 @@ def init_mean_std(snapshots_dir: str, dataset: Dataset, batch_size: int, n_threa
                 masks = batch['mask']
                 if class_weights is None:
                     class_weights = np.zeros(n_classes)
-                    num_pixels = None
+                    num_pixels = 0
 
                 for j in range(class_weights.shape[0]):
                     class_weights[j] += np.sum(masks.numpy() == j)

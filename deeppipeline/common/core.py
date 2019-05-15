@@ -67,7 +67,7 @@ def init_session(args):
     kvs.update('snapshot_name', snapshot_name)
     kvs.update('args', args)
 
-    return args, snapshot_name
+    return args, snapshot_name, kvs
 
 
 def init_optimizer(net):
