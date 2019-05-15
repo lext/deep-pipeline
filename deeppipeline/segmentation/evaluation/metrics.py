@@ -5,10 +5,12 @@ def calculate_confusion_matrix_from_arrays(prediction, ground_truth, nr_labels):
     """
     https://github.com/ternaus/robot-surgery-segmentation/blob/master/validation.py
     """
+
     replace_indices = np.vstack((
         ground_truth.flatten(),
         prediction.flatten())
     ).T
+
     confusion_matrix, _ = np.histogramdd(
         replace_indices,
         bins=(nr_labels, nr_labels),

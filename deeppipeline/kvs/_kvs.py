@@ -65,6 +65,9 @@ class GlobalKVS(object):
     def tag_ts(self, tag):
         return self._d[tag]
 
+    def __contains__(self, key):
+        return key in self._d
+
     def save_pkl(self, filename):
         with open(filename, 'wb') as f:
             pickle.dump(self._d, f)

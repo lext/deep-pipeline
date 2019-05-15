@@ -3,19 +3,23 @@ from deeppipeline.kvs import GlobalKVS
 import numpy as np
 
 
-def init_folds(group_id_col=None, class_col=None):
+def init_folds(img_group_id_colname=None, img_class_colname=None):
     kvs = GlobalKVS()
 
-    if group_id_col is not None:
+    if img_group_id_colname is not None:
         gkf = GroupKFold(kvs['args'].n_folds)
+        if img_class_colname is not None:
+            class_col_name = getattr(kvs['metadata'], img_class_colname, None)
+        else:
+            class_col_name = None
         splitter = gkf.split(X=kvs['metadata'],
-                             y=getattr(kvs['metadata'], class_col, None),
-                             groups=getattr(kvs['metadata'], group_id_col))
+                             y=class_col_name,
+                             groups=getattr(kvs['metadata'], img_group_id_colname))
     else:
         if class_col is not None:
             skf = StratifiedKFold(kvs['args'].n_folds)
             splitter = skf.split(X=kvs['metadata'],
-                                 y=getattr(kvs['metadata'], class_col, None))
+                                 y=getattr(kvs['metadata'], img_class_colname, None))
         else:
             kf = KFold(kvs['args'].n_folds)
             splitter = kf.split(X=kvs['metadata'])
