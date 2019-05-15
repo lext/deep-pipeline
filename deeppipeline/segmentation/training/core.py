@@ -2,12 +2,15 @@ import torch
 from tqdm import tqdm
 import gc
 import numpy as np
+import os
+from tensorboardX import SummaryWriter
 
 from termcolor import colored
 
 from deeppipeline.kvs import GlobalKVS
 from deeppipeline.segmentation.evaluation import metrics
 from deeppipeline.segmentation.evaluation.metrics import calculate_dice, calculate_iou
+from deeppipeline.common.core import save_checkpoint
 
 
 def pass_epoch(net, loader, optimizer, criterion):
@@ -94,4 +97,18 @@ def log_metrics(writer, train_loss, val_loss, conf_matrix):
     kvs.update(f'val_metrics_fold_[{kvs["cur_fold"]}]', val_metrics)
 
 
+def train_fold(net, train_loader, optimizer, criterion, val_loader, scheduler):
+    kvs = GlobalKVS()
+    fold_id = kvs['cur_fold']
+    writer = SummaryWriter(os.path.join(kvs['args'].workdir, 'snapshots', kvs['snapshot_name'],
+                                        'logs', 'fold_{}'.format(fold_id), kvs['snapshot_name']))
+
+    for epoch in range(kvs['args'].n_epochs):
+        print(colored('==> ', 'green') + f'Training epoch [{epoch}] with LR {scheduler.get_lr()}')
+        kvs.update('cur_epoch', epoch)
+        train_loss, _ = pass_epoch(net, train_loader, optimizer, criterion)
+        val_loss, conf_matrix = pass_epoch(net, val_loader, None, criterion)
+        log_metrics(writer, train_loss, val_loss, conf_matrix)
+        save_checkpoint(net, 'val_loss', 'lt')
+        scheduler.step()
 
