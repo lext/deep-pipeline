@@ -118,7 +118,7 @@ def train_fold(net, train_loader, optimizer, criterion, val_loader, scheduler):
         train_loss, _ = pass_epoch(net, train_loader, optimizer, criterion)
         val_loss, conf_matrix = pass_epoch(net, val_loader, None, criterion)
         log_metrics(writer, train_loss, val_loss, conf_matrix)
-        save_checkpoint(net, 'val_loss', 'lt')
+        save_checkpoint(net, optimizer, 'val_loss', 'lt')
         scheduler.step()
 
 
