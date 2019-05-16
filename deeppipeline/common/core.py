@@ -95,7 +95,7 @@ def save_checkpoint(net, optimizer, val_metric_name, comparator='lt'):
 
     if kvs['prev_model'] is None:
         print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
-        torch.save(net.state_dict(), cur_snapshot_name)
+        torch.save({'model': net.state_dict(), 'optimizer': optimizer.state_dict()}, cur_snapshot_name)
         kvs.update('prev_model', cur_snapshot_name)
         kvs.update('best_val_metric', val_metric)
 
