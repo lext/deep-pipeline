@@ -16,7 +16,7 @@ def init_folds(img_group_id_colname=None, img_class_colname=None):
                              y=class_col_name,
                              groups=getattr(kvs['metadata'], img_group_id_colname))
     else:
-        if class_col is not None:
+        if img_class_colname is not None:
             skf = StratifiedKFold(kvs['args'].n_folds)
             splitter = skf.split(X=kvs['metadata'],
                                  y=getattr(kvs['metadata'], img_class_colname, None))
