@@ -23,7 +23,7 @@ def init_mean_std(snapshots_dir: str, dataset: Dataset, batch_size: int, n_threa
 
     """
     if os.path.isfile(os.path.join(snapshots_dir, 'mean_std.npy')):
-        return np.load(os.path.join(snapshots_dir, 'mean_std.npy'))
+        return np.load(os.path.join(snapshots_dir, 'mean_std.npy'), allow_pickle=True)
     else:
         tmp_loader = DataLoader(dataset, batch_size=batch_size, num_workers=n_threads)
         mean_vector = None

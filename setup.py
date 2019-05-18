@@ -7,7 +7,8 @@ from setuptools import setup, find_packages
 
 
 requirements = ('numpy', 'opencv-python',
-                'torch>=1.0.0', 'solt>=0.1.5', 'torchvision', 'tqdm', 'termcolor')
+                'torch>=1.0.0', 'solt>=0.1.5', 'torchvision', 'tqdm',
+                'termcolor', 'tensorflow', 'tensorboardx', 'scikit-learn')
 
 setup_requirements = ()
 
@@ -41,6 +42,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/lext/deep-pipeline',
-    version='0.2',
+    version='0.2.1',
     zip_safe=False,
 )
