@@ -7,6 +7,7 @@ import glob
 from termcolor import colored
 from deeppipeline.segmentation.models import init_model
 from deeppipeline.segmentation.training.dataset import SegmentationDataset
+import numpy as np
 
 
 def load_fold(args, fold_id):
