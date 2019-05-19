@@ -1,8 +1,12 @@
 import torch
+from torch.utils.data import DataLoader, sampler
+import cv2
+from tqdm import tqdm
 import os
 import glob
-
+from termcolor import colored
 from deeppipeline.segmentation.models import init_model
+from deeppipeline.segmentation.training.dataset import SegmentationDataset
 
 
 def load_fold(args, fold_id):
@@ -24,7 +28,8 @@ def load_fold(args, fold_id):
     net.eval()
     return net
 
-def run_oof_binary(session_backup, read_img, read_mask, img_group_id_colname=None):
+
+def run_oof_binary(args, session_backup, read_img, read_mask, img_group_id_colname=None):
     metadata = session_backup[f'metadata'][0]
     if img_group_id_colname is not None:
         for group_name, _ in metadata.groupby(by=img_group_id_colname):
@@ -41,13 +46,13 @@ def run_oof_binary(session_backup, read_img, read_mask, img_group_id_colname=Non
 
         val_dataset = SegmentationDataset(split=val_set,
                                           trf=session_backup['val_trf'][0],
-                                          read_img=read_gs_ocv,
-                                          read_mask=read_gs_binary_mask_ocv,
+                                          read_img=read_img,
+                                          read_mask=read_mask,
                                           img_group_id_colname=img_group_id_colname)
 
         val_loader = DataLoader(val_dataset, batch_size=args.bs,
                                 num_workers=args.n_threads,
-                                sampler=SequentialSampler(val_dataset))
+                                sampler=sampler.SequentialSampler(val_dataset))
 
         with torch.no_grad():
             for batch in tqdm(val_loader, total=len(val_loader), desc=f'Predicting fold {fold_id}:'):
@@ -63,9 +68,9 @@ def run_oof_binary(session_backup, read_img, read_mask, img_group_id_colname=Non
                     pred_mask = predicts[idx].squeeze()
                     if img_group_id_colname is not None:
                         cv2.imwrite(os.path.join(args.snapshots_root,
-                                                args.snapshot,
-                                                'oof_inference', group_ids[idx], fname), pred_mask)
+                                                 args.snapshot,
+                                                 'oof_inference', group_ids[idx], fname), pred_mask)
                     else:
                         cv2.imwrite(os.path.join(args.snapshots_root,
-                                                args.snapshot,
-                                                'oof_inference', fname), pred_mask)
+                                                 args.snapshot,
+                                                 'oof_inference', fname), pred_mask)
