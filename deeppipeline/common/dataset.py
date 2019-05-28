@@ -1,3 +1,5 @@
+import os
+import pandas as pd
 from sklearn.model_selection import KFold, GroupKFold, StratifiedKFold
 from deeppipeline.kvs import GlobalKVS
 import numpy as np
@@ -41,3 +43,9 @@ def init_folds(img_group_id_colname=None, img_class_colname=None):
         kvs.update(f'val_metrics_fold_[{fold_id}]', None, list)
 
     kvs.update('cv_split', cv_split)
+
+
+def init_pd_meta():
+    kvs = GlobalKVS()
+    metadata = pd.read_csv(os.path.join(kvs['args'].workdir, kvs['args'].metadata))
+    kvs.update('metadata', metadata)
