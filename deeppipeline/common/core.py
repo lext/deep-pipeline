@@ -155,6 +155,7 @@ def train_n_folds(init_args, init_metadata, init_augs,
                   init_loaders,
                   init_model, init_loss,
                   init_scheduler,
+                  pass_epoch, log_metrics_cb,
                   img_group_id_colname=None, img_class_colname=None):
 
     args = init_args()
@@ -180,6 +181,6 @@ def train_n_folds(init_args, init_metadata, init_augs,
         scheduler = init_scheduler(optimizer)
         train_loader, val_loader = init_loaders(x_train, x_val)
 
-        train_fold(net=net, train_loader=train_loader,
+        train_fold(pass_epoch=pass_epoch, net=net, train_loader=train_loader,
                    optimizer=optimizer, criterion=criterion,
-                   val_loader=val_loader, scheduler=scheduler)
+                   val_loader=val_loader, scheduler=scheduler, log_metrics_cb=log_metrics_cb)
