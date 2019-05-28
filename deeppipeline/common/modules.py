@@ -41,9 +41,9 @@ def conv_block_nxn(ks, inp, out, activation='relu', normalization='BN'):
         )
 
 
-def conv_block3x3(inp, out, activation='relu', normalization='BN'):
+def conv_block_3x3(inp, out, activation='relu', normalization='BN'):
     return conv_block_nxn(3, inp, out, activation, normalization)
 
 
-def conv_block1x1(inp, out, activation='relu', normalization='BN'):
+def conv_block_1x1(inp, out, activation='relu', normalization='BN'):
     return conv_block_nxn(3, inp, out, activation, normalization)

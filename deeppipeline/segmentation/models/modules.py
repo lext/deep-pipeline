@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
-from deeppipeline.common.modules import conv_block3x3
+from deeppipeline.common.modules import conv_block_3x3
 
 
 class Encoder(nn.Module):
@@ -20,9 +20,9 @@ class Encoder(nn.Module):
         for i in range(depth):
             tmp = []
             if i == 0:
-                tmp.append(conv_block3x3(inp_channels, out_channels, activation, normalization))
+                tmp.append(conv_block_3x3(inp_channels, out_channels, activation, normalization))
             else:
-                tmp.append(conv_block3x3(out_channels, out_channels, activation, normalization))
+                tmp.append(conv_block_3x3(out_channels, out_channels, activation, normalization))
             self.layers.add_module('conv_3x3_{}'.format(i), nn.Sequential(*tmp))
 
     def forward(self, x):
@@ -48,9 +48,9 @@ class Decoder(nn.Module):
         for i in range(depth):
             tmp = []
             if i == 0:
-                tmp.append(conv_block3x3(inp_channels, out_channels, activation, normalization))
+                tmp.append(conv_block_3x3(inp_channels, out_channels, activation, normalization))
             else:
-                tmp.append(conv_block3x3(out_channels, out_channels, activation, normalization))
+                tmp.append(conv_block_3x3(out_channels, out_channels, activation, normalization))
             self.layers.add_module('conv_3x3_{}'.format(i), nn.Sequential(*tmp))
 
     def forward(self, x_big, x):

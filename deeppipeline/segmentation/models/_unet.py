@@ -1,6 +1,7 @@
 import torch.nn as nn
 from collections import OrderedDict
-from .modules import conv_block3x3, Encoder, Decoder
+from .modules import Encoder, Decoder
+from deeppipeline.common.modules import conv_block_3x3
 
 
 class UNet(nn.Module):
@@ -49,7 +50,7 @@ class UNet(nn.Module):
             raise ValueError('The depth parameter is wrong. Cannot determine the output size of the encoder')
             # Creating the center
         modules['center'] = nn.Sequential(
-            *[conv_block3x3(bw * mul_out, bw * mul_out, activation, norm_center) for _ in range(center_depth)]
+            *[conv_block_3x3(bw * mul_out, bw * mul_out, activation, norm_center) for _ in range(center_depth)]
         )
         # Automatically creating the decoder
         for level in reversed(range(2, depth + 1)):
