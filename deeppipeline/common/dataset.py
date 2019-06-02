@@ -6,6 +6,22 @@ import numpy as np
 
 
 def init_folds(img_group_id_colname=None, img_class_colname=None):
+    """
+    Initialzies the cross-validation splits.
+
+    Parameters
+    ----------
+    img_group_id_colname : str or None
+        Column in `metadata` that is used to create cross-validation splits.
+        If not None, then images that have the same group_id are never in train and validation.
+    img_class_colname : str or None
+        Column in `metadata` that is used to create cross-validation splits. If not none,
+        splits are stratifed to ensure the same distribution of `img_class_colname` in train and validation.
+
+    Returns
+    -------
+
+    """
     kvs = GlobalKVS()
 
     if img_group_id_colname is not None:
@@ -46,6 +62,14 @@ def init_folds(img_group_id_colname=None, img_class_colname=None):
 
 
 def init_pd_meta():
+    """
+    Basic implementation of metadata loading. Loads the pandas data frame and stores
+    it in global KVS under the `metadata` tag.
+
+    Returns
+    -------
+    out : None
+    """
     kvs = GlobalKVS()
     metadata = pd.read_csv(os.path.join(kvs['args'].workdir, kvs['args'].metadata))
     kvs.update('metadata', metadata)

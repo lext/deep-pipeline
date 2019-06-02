@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 def cumulative_error_plot(errors, labels, title, colors=None, units='mm'):
     """
+    Plots a cumulative curve. Useful for e.g. landmark detection.
 
     Parameters
     ----------
