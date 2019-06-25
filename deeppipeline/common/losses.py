@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
+from ._robustloss.adaptiveloss import AdaptiveLossFunction as GeneralizedRobustLoss
 
 
 class ElasticLoss(nn.Module):
@@ -81,4 +82,5 @@ class WingLoss(nn.Module):
             loss += self.__forward_single(preds[i], target)
 
         return loss
+
 

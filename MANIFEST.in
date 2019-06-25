@@ -1,1 +1,2 @@
 recursive-include deeppipeline *.py
+recursive-include deeppipeline *.npz

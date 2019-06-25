@@ -95,7 +95,7 @@ def init_session(args):
     return args, snapshot_name, kvs
 
 
-def init_optimizer(net):
+def init_optimizer(net, loss):
     """
     Initializes the optimizer for a given model.
     Currently supported optimizers are Adam and SGD with default parameters.
@@ -113,9 +113,13 @@ def init_optimizer(net):
     """
     kvs = GlobalKVS()
     if kvs['args'].optimizer == 'adam':
-        return optim.Adam(net.parameters(), lr=kvs['args'].lr, weight_decay=kvs['args'].wd)
+        return optim.Adam([{'params': net.parameters()},
+                           {'params': loss.parameters()}],
+                          lr=kvs['args'].lr, weight_decay=kvs['args'].wd)
     elif kvs['args'].optimizer == 'sgd':
-        return optim.SGD(net.parameters(), lr=kvs['args'].lr, weight_decay=kvs['args'].wd, momentum=0.9)
+        return optim.SGD([{'params': net.parameters()},
+                          {'params': loss.parameters()}],
+                         lr=kvs['args'].lr, weight_decay=kvs['args'].wd, momentum=0.9)
     else:
         raise NotImplementedError
 
@@ -185,7 +189,7 @@ def init_ms_scheduler(optimizer):
     return lr_scheduler.MultiStepLR(optimizer, kvs['args'].lr_drop)
 
 
-def save_checkpoint(net, optimizer, val_metric_name, comparator='lt'):
+def save_checkpoint(net, loss, optimizer, val_metric_name, comparator='lt'):
     """
     Flexible function that saves the model and the optimizer states using a metric and a comparator.
 
@@ -218,9 +222,10 @@ def save_checkpoint(net, optimizer, val_metric_name, comparator='lt'):
     cur_snapshot_name = os.path.join(os.path.join(kvs['args'].workdir, 'snapshots', kvs['snapshot_name'],
                                      f'fold_{fold_id}_epoch_{epoch}.pth'))
 
+    state = {'model': net.state_dict(), 'optimizer': optimizer.state_dict(), 'loss': loss.state_dict()}
     if kvs['prev_model'] is None:
         print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
-        torch.save({'model': net.state_dict(), 'optimizer': optimizer.state_dict()}, cur_snapshot_name)
+        torch.save(state, cur_snapshot_name)
         kvs.update('prev_model', cur_snapshot_name)
         kvs.update('best_val_metric', val_metric)
 
@@ -228,7 +233,7 @@ def save_checkpoint(net, optimizer, val_metric_name, comparator='lt'):
         if comparator(val_metric, kvs['best_val_metric']):
             print(colored('====> ', 'red') + 'Snapshot was saved to', cur_snapshot_name)
             os.remove(kvs['prev_model'])
-            torch.save({'model': net.state_dict(), 'optimizer': optimizer.state_dict()}, cur_snapshot_name)
+            torch.save(state, cur_snapshot_name)
             kvs.update('prev_model', cur_snapshot_name)
             kvs.update('best_val_metric', val_metric)
 
@@ -272,7 +277,7 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
         train_loss, _ = pass_epoch(net, train_loader, optimizer, criterion)
         val_loss, val_results = pass_epoch(net, val_loader, None, criterion)
         log_metrics(writer, train_loss, val_loss, val_results, log_metrics_cb)
-        save_checkpoint(net, optimizer, 'val_loss', 'lt')
+        save_checkpoint(net, criterion, optimizer, 'val_loss', 'lt')
         scheduler.step()
 
 
@@ -349,8 +354,8 @@ def train_n_folds(init_args, init_metadata, init_augs,
         kvs.update('prev_model', None)
 
         net = init_model()
-        optimizer = init_optimizer(net)
         criterion = init_loss()
+        optimizer = init_optimizer(net, criterion)
         scheduler = init_scheduler(optimizer)
         train_loader, val_loader = init_loaders(x_train, x_val)
 
