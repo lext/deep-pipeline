@@ -13,6 +13,7 @@ from deeppipeline.kvs import GlobalKVS
 from tensorboardX import SummaryWriter
 from torch.optim import lr_scheduler
 from torchcontrib.optim import swa
+from torch import nn
 
 def git_info():
     """
@@ -67,6 +68,7 @@ def init_session(args):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     np.random.seed(args.seed)
+
     # Creating the snapshot
     snapshot_name = time.strftime(f'{socket.gethostname()}_%Y_%m_%d_%H_%M')
     os.makedirs(os.path.join(args.workdir, 'snapshots',  snapshot_name), exist_ok=True)
@@ -123,11 +125,6 @@ def init_optimizer_default(net, loss):
                          lr=kvs['args'].lr, weight_decay=kvs['args'].wd, momentum=0.9)
     else:
         raise NotImplementedError
-
-def init_optimizer_swa_default(net, criterion):
-    kvs = GlobalKVS()
-    opt = init_optimizer_default(net, criterion)
-    return swa.SWA(opt, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
 
 
 def log_metrics(writer, train_loss, val_loss, val_results, val_results_callback=None):
@@ -247,6 +244,29 @@ def bn_update_cb(model, train_loader, img_key):
     print(colored('==> ', 'red') + f'Updating BatchNorm Statistics after SWA')
     for batch in tqdm(train_loader, total=len(train_loader)):
         model(batch[img_key])
+
+def mixup(x, y, lam):
+    batch_size = x.size()[0]
+    index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_b
+
+def mixup_pass(net, criterion, alpha):
+    mixup_sampler = beta.Beta(alpha, alpha)
+
+    lam = mixup_sampler.sample().item()
+    mixed_inputs, shuffled_targets = mixup(inputs, target, lam)
+
+    outputs = net(inputs)
+    outputs_mixed = net(mixed_inputs)
+
+    loss_orig = criterion(outputs, target)
+    loss_mixed = criterion(outputs_mixed, shuffled_targets)
+
+    loss = lam * loss_orig + (1 - lam) * loss_mixed
+    return loss
 
 def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, scheduler,
                log_metrics_cb=None, img_key=None):
@@ -384,18 +404,23 @@ def train_n_folds(init_args, init_metadata, init_augs,
         kvs.update('prev_model', None)
 
         net = init_model()
+        if kvs['args'].multi_gpu and kvs['gpus'] > 1:
+            net = nn.DataParallel(net).to('cuda')
+
         criterion = init_loss()
         if init_optimizer is None:
-            if kvs['args'].use_swa:
-                optimizer = init_optimizer_swa_default(net, criterion)
-            else:
-                optimizer = init_optimizer_default(net, criterion)
+            optimizer = init_optimizer_default(net, criterion)
         else:
             optimizer = init_optimizer(net, criterion)
         if init_scheduler is None:
             scheduler = None
         else:
             scheduler = init_scheduler(optimizer)
+
+        if kvs['args'].use_swa:
+            optimizer = swa.SWA(optimizer, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
+
+
         train_loader, val_loader = init_loaders(x_train, x_val)
 
         train_fold(pass_epoch=pass_epoch, net=net, train_loader=train_loader,

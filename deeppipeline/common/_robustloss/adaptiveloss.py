@@ -92,8 +92,8 @@ class AdaptiveLossFunction(nn.Module):
         self.float_dtype = float_dtype
         self.device = device
 
-        self.init_alpha(alpha_init, alpha_lo, alpha_hi)
-        self.init_scale(scale_init, scale_lo)
+        self.init_alpha(float(alpha_init), float(alpha_lo), float(alpha_hi))
+        self.init_scale(float(scale_init), float(scale_lo))
 
     def init_alpha(self, alpha_init, alpha_lo, alpha_hi):
         if alpha_lo == alpha_hi:
