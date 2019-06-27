@@ -95,7 +95,7 @@ def init_session(args):
     return args, snapshot_name, kvs
 
 
-def init_optimizer(net, loss):
+def init_optimizer_default(net, loss):
     """
     Initializes the optimizer for a given model.
     Currently supported optimizers are Adam and SGD with default parameters.
@@ -286,6 +286,7 @@ def train_n_folds(init_args, init_metadata, init_augs,
                   init_folds,
                   init_loaders,
                   init_model, init_loss,
+                  init_optimizer,
                   init_scheduler,
                   pass_epoch, log_metrics_cb,
                   img_group_id_colname=None, img_class_colname=None):
@@ -317,6 +318,9 @@ def train_n_folds(init_args, init_metadata, init_augs,
         Initializes the model for every fold.
     init_loss : Callable
         Initializes the loss
+    init_optimizer : Callable or None
+        Initializes the optimizer by taking the parameters of the loss and the model.
+        Has to take both objects as an nput.
     init_scheduler : Callable
         Initializes the scheduler
     pass_epoch : Callable
@@ -355,7 +359,10 @@ def train_n_folds(init_args, init_metadata, init_augs,
 
         net = init_model()
         criterion = init_loss()
-        optimizer = init_optimizer(net, criterion)
+        if init_optimizer is None:
+            optimizer = init_optimizer_default(net, criterion)
+        else:
+            optimizer = init_optimizer(net, criterion)
         scheduler = init_scheduler(optimizer)
         train_loader, val_loader = init_loaders(x_train, x_val)
 

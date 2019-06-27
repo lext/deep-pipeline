@@ -2,8 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
-from ._robustloss.adaptiveloss import AdaptiveLossFunction as GeneralizedRobustLoss
-
+from ._robustloss.adaptiveloss import AdaptiveLossFunction
+import numpy as np
 
 class ElasticLoss(nn.Module):
     def __init__(self, w=0.5):
@@ -83,4 +83,29 @@ class WingLoss(nn.Module):
 
         return loss
 
+class GeneralizedRobustLoss(nn.Module):
+    def __init__(self,
+                 num_dims,
+                 alpha_lo: float = 0.001,
+                 alpha_hi: float = 1.999,
+                 alpha_init=None,
+                 scale_lo: float = 1e-5,
+                 scale_init: float = 1.0,
+                 float_dtype=np.float32,
+                 device: str = 'cuda'):
+
+        super(GeneralizedRobustLoss, self).__init__()
+        self.loss_obj = AdaptiveLossFunction(num_dims, alpha_lo, alpha_hi, alpha_init,
+                                             scale_lo, scale_init, float_dtype, device)
+
+    def forward(self, preds, target):
+        loss = 0
+
+        if not isinstance(preds, tuple):
+            preds = (preds, )
+
+        for i in range(len(preds)):
+            loss += self.loss_obj(preds[i], target)
+
+        return loss
 

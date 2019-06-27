@@ -158,6 +158,7 @@ class AdaptiveLossFunction(nn.Module):
           bounded from below by zero. You'll probably want to minimize their sum or
           mean.
         """
+
         x = torch.as_tensor(preds)
         y = torch.as_tensor(targets)
 
