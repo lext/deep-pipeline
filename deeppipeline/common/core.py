@@ -6,12 +6,13 @@ from termcolor import colored
 import subprocess
 import socket
 from torch import optim
+from tqdm import tqdm
 import os
 import operator
 from deeppipeline.kvs import GlobalKVS
 from tensorboardX import SummaryWriter
 from torch.optim import lr_scheduler
-
+from torchcontrib.optim import swa
 
 def git_info():
     """
@@ -122,6 +123,11 @@ def init_optimizer_default(net, loss):
                          lr=kvs['args'].lr, weight_decay=kvs['args'].wd, momentum=0.9)
     else:
         raise NotImplementedError
+
+def init_optimizer_swa_default(net, criterion):
+    kvs = GlobalKVS()
+    opt = init_optimizer_default(net, criterion)
+    return swa.SWA(opt, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
 
 
 def log_metrics(writer, train_loss, val_loss, val_results, val_results_callback=None):
@@ -237,8 +243,13 @@ def save_checkpoint(net, loss, optimizer, val_metric_name, comparator='lt'):
             kvs.update('prev_model', cur_snapshot_name)
             kvs.update('best_val_metric', val_metric)
 
+def bn_update_cb(model, train_loader, img_key):
+    print(colored('==> ', 'red') + f'Updating BatchNorm Statistics after SWA')
+    for batch in tqdm(train_loader, total=len(train_loader)):
+        model(batch[img_key])
 
-def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, scheduler, log_metrics_cb=None):
+def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, scheduler,
+               log_metrics_cb=None, img_key=None):
     """
     A common implementation of training one fold of a neural network. Presumably, it should be called
     within cross-validation loop.
@@ -261,6 +272,8 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
         Learning rate scheduler
     log_metrics_cb : Callable or None
         Callback that processes the artifacts from validation stage.
+    img_key : str
+        Key in the dataloader that allows to extact an image. Used in SWA.
 
     Returns
     -------
@@ -272,13 +285,22 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
                                         'logs', 'fold_{}'.format(fold_id), kvs['snapshot_name']))
 
     for epoch in range(kvs['args'].n_epochs):
-        print(colored('==> ', 'green') + f'Training epoch [{epoch}] with LR {scheduler.get_lr()}')
+        if scheduler is not None:
+            print(colored('==> ', 'green') + f'Training epoch [{epoch}] with LR {scheduler.get_lr()}')
+        else:
+            print(colored('==> ', 'green') + f'Training epoch [{epoch}]')
         kvs.update('cur_epoch', epoch)
         train_loss, _ = pass_epoch(net, train_loader, optimizer, criterion)
+        if isinstance(optimizer, swa.SWA):
+            optimizer.swap_swa_sgd()
+            assert img_key is not None
+            bn_update_cb(net, train_loader, img_key)
+
         val_loss, val_results = pass_epoch(net, val_loader, None, criterion)
         log_metrics(writer, train_loss, val_loss, val_results, log_metrics_cb)
         save_checkpoint(net, criterion, optimizer, 'val_loss', 'lt')
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
 
 def train_n_folds(init_args, init_metadata, init_augs,
@@ -289,7 +311,9 @@ def train_n_folds(init_args, init_metadata, init_augs,
                   init_optimizer,
                   init_scheduler,
                   pass_epoch, log_metrics_cb,
-                  img_group_id_colname=None, img_class_colname=None):
+                  img_key=None,
+                  img_group_id_colname=None,
+                  img_class_colname=None):
     """
     Full implementation of the n-fold training loop. Trains each fold in cross-validation.
 
@@ -321,12 +345,14 @@ def train_n_folds(init_args, init_metadata, init_augs,
     init_optimizer : Callable or None
         Initializes the optimizer by taking the parameters of the loss and the model.
         Has to take both objects as an nput.
-    init_scheduler : Callable
+    init_scheduler : Callable or None
         Initializes the scheduler
     pass_epoch : Callable
         Trains / validaties one epoch.
     log_metrics_cb : Callable or None
         Callback to process the artifacts of the validation function.
+    img_key : str
+        Key in the dataloader that allows to extact an image. Used in SWA.
     img_group_id_colname : str or None
         Group id for each image. If not None, the folds are generated so that the images
         with the same group id cannot be in both train and validation simultaneously.
@@ -360,12 +386,19 @@ def train_n_folds(init_args, init_metadata, init_augs,
         net = init_model()
         criterion = init_loss()
         if init_optimizer is None:
-            optimizer = init_optimizer_default(net, criterion)
+            if kvs['args'].use_swa:
+                optimizer = init_optimizer_swa_default(net, criterion)
+            else:
+                optimizer = init_optimizer_default(net, criterion)
         else:
             optimizer = init_optimizer(net, criterion)
-        scheduler = init_scheduler(optimizer)
+        if init_scheduler is None:
+            scheduler = None
+        else:
+            scheduler = init_scheduler(optimizer)
         train_loader, val_loader = init_loaders(x_train, x_val)
 
         train_fold(pass_epoch=pass_epoch, net=net, train_loader=train_loader,
                    optimizer=optimizer, criterion=criterion,
-                   val_loader=val_loader, scheduler=scheduler, log_metrics_cb=log_metrics_cb)
+                   val_loader=val_loader, scheduler=scheduler,
+                   log_metrics_cb=log_metrics_cb, img_key=img_key)
