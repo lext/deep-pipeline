@@ -21,11 +21,12 @@ and for sampling from the distribution.
 """
 
 import numbers
+import os
 
 import mpmath
 import numpy as np
 import torch
-import os
+
 from . import cubic_spline
 from . import general
 from . import util

@@ -1,6 +1,6 @@
-from torch import nn
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 
 class BCEWithLogitsLoss2d(nn.Module):
@@ -71,6 +71,7 @@ class FocalLoss(nn.Module):
     https://github.com/BloodAxe/pytorch-toolbelt/blob/develop/pytorch_toolbelt/losses/functional.py#L8
 
     """
+
     def __init__(self, gamma=2.0, alpha=0.25, reduction='mean'):
         super(FocalLoss, self).__init__()
         self.gamma = gamma

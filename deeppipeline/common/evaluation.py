@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def cumulative_error_plot(errors, labels, title, colors=None, units='mm'):

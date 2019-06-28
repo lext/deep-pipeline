@@ -1,9 +1,10 @@
-from tqdm import tqdm
-import numpy as np
 import os
+
+import numpy as np
+import torch
 from termcolor import colored
 from torch.utils.data import DataLoader, Dataset
-import torch
+from tqdm import tqdm
 
 
 def init_mean_std(snapshots_dir: str, dataset: Dataset, batch_size: int, n_threads: int, n_classes: int):

@@ -1,13 +1,15 @@
-import torch
-from torch.utils.data import DataLoader, sampler
-import cv2
-from tqdm import tqdm
-import os
 import glob
+import os
+
+import cv2
+import numpy as np
+import torch
 from termcolor import colored
+from torch.utils.data import DataLoader, sampler
+from tqdm import tqdm
+
 from deeppipeline.segmentation.models import init_model
 from deeppipeline.segmentation.training.dataset import SegmentationDataset
-import numpy as np
 
 
 def load_fold(args, fold_id):

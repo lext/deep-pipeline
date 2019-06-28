@@ -1,23 +1,23 @@
-import torch
-from tqdm import tqdm
+import os
+
 import gc
 import numpy as np
-import os
+import torch
 from tensorboardX import SummaryWriter
 from termcolor import colored
+from tqdm import tqdm
 
 from deeppipeline.common.core import save_checkpoint, init_optimizer, init_session
 from deeppipeline.common.dataset import init_folds
 from deeppipeline.kvs import GlobalKVS
-
-from deeppipeline.segmentation.models import init_model
-from deeppipeline.segmentation.losses import init_binary_loss
-from deeppipeline.segmentation.training.dataset import init_segmentation_loaders
-from deeppipeline.segmentation.training.dataset import init_data_processing
-
 from deeppipeline.segmentation.evaluation import metrics
 from deeppipeline.segmentation.evaluation.metrics import calculate_dice, calculate_iou
+from deeppipeline.segmentation.losses import init_binary_loss
+from deeppipeline.segmentation.models import init_model
+from deeppipeline.segmentation.training.dataset import init_data_processing
+from deeppipeline.segmentation.training.dataset import init_segmentation_loaders
 from deeppipeline.transforms.segmentation import init_binary_segmentation_augs
+
 
 def pass_epoch(net, loader, optimizer, criterion):
     kvs = GlobalKVS()
@@ -124,7 +124,6 @@ def train_fold(net, train_loader, optimizer, criterion, val_loader, scheduler):
 
 def train_n_folds(init_args, init_metadata, init_scheduler, img_reader,
                   mask_reader, init_augs=None, img_group_id_colname=None, img_class_colname=None, img_id_colname=None):
-
     args = init_args()
     kvs = init_session(args)[-1]
     init_metadata()
@@ -160,4 +159,3 @@ def train_n_folds(init_args, init_metadata, init_scheduler, img_reader,
         train_fold(net=net, train_loader=train_loader,
                    optimizer=optimizer, criterion=criterion,
                    val_loader=val_loader, scheduler=scheduler)
-

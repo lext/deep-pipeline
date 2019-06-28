@@ -1,15 +1,15 @@
-import torch
-from torch.utils import data
-import numpy as np
-
 import os
 from functools import partial
+
+import numpy as np
+import torch
+from torch.utils import data
 from torchvision import transforms as tvt
 
-from deeppipeline.io import read_rgb_ocv, read_gs_binary_mask_ocv
-from deeppipeline.kvs import GlobalKVS
 from deeppipeline.common.normalization import init_mean_std, normalize_channel_wise
 from deeppipeline.common.transforms import apply_by_index, numpy2tens
+from deeppipeline.io import read_rgb_ocv, read_gs_binary_mask_ocv
+from deeppipeline.kvs import GlobalKVS
 
 
 class SegmentationDataset(data.Dataset):
@@ -109,4 +109,3 @@ def init_segmentation_loaders(x_train, x_val, img_reader=read_rgb_ocv, mask_read
                                  num_workers=kvs['args'].n_threads)
 
     return train_loader, val_loader
-

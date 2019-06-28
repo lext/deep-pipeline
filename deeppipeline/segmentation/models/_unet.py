@@ -1,7 +1,9 @@
-import torch.nn as nn
 from collections import OrderedDict
-from .modules import Encoder, Decoder
+
+import torch.nn as nn
+
 from deeppipeline.common.modules import conv_block_3x3
+from .modules import Encoder, Decoder
 
 
 class UNet(nn.Module):

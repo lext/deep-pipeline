@@ -1,6 +1,7 @@
 import copy
-import torch
+
 import numpy as np
+import torch
 
 
 def apply_by_index(items, transform, idx=0):

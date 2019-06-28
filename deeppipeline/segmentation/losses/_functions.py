@@ -8,8 +8,8 @@ def init_binary_loss():
         if kvs['args'].loss == 'combined':
             return CombinedLoss([BCEWithLogitsLoss2d(),
                                  SoftJaccardLoss(use_log=kvs['args'].log_jaccard)],
-                                weights=[1-kvs['args'].loss_weight,
-                                kvs['args'].loss_weight])
+                                weights=[1 - kvs['args'].loss_weight,
+                                         kvs['args'].loss_weight])
         elif kvs['args'].loss == 'bce':
             return BCEWithLogitsLoss2d()
         elif kvs['args'].loss == 'jaccard':

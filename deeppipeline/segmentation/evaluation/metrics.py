@@ -73,7 +73,7 @@ def calculate_volumetric_similarity(confusion_matrix):
         if denom == 0:
             vd = 0
         else:
-            vd = 1 - abs(false_negatives-false_positives) / denom
+            vd = 1 - abs(false_negatives - false_positives) / denom
 
         scores.append(vd)
 

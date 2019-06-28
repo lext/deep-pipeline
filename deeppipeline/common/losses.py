@@ -1,9 +1,12 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
 import math
-from ._robustloss.adaptiveloss import AdaptiveLossFunction
+
 import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
+
+from ._robustloss.adaptiveloss import AdaptiveLossFunction
+
 
 class ElasticLoss(nn.Module):
     def __init__(self, w=0.5):
@@ -14,7 +17,7 @@ class ElasticLoss(nn.Module):
         loss = 0
 
         if not isinstance(preds, tuple):
-            preds = (preds, )
+            preds = (preds,)
 
         for i in range(len(preds)):
             l2 = F.mse_loss(preds[i].squeeze(), gt.squeeze()).mul(self.weights[0])
@@ -38,7 +41,7 @@ class LNLoss(nn.Module):
         loss = 0
 
         if not isinstance(preds, tuple):
-            preds = (preds, )
+            preds = (preds,)
 
         for i in range(len(preds)):
             loss += self.loss(preds[i].squeeze(), gt.squeeze())
@@ -54,13 +57,14 @@ class WingLoss(nn.Module):
     Supports intermediate supervision.
 
     """
+
     def __init__(self, width=5, curvature=0.5):
         super(WingLoss, self).__init__()
         self.w = width
         self.curvature = curvature
         self.c = self.w - self.w * math.log(1 + self.w / self.curvature)
 
-    def __forward_single(self,preds, target):
+    def __forward_single(self, preds, target):
         diff_abs = (target - preds).abs()
         loss = diff_abs.clone()
 
@@ -76,12 +80,13 @@ class WingLoss(nn.Module):
         loss = 0
 
         if not isinstance(preds, tuple):
-            preds = (preds, )
+            preds = (preds,)
 
         for i in range(len(preds)):
             loss += self.__forward_single(preds[i], target)
 
         return loss
+
 
 class GeneralizedRobustLoss(nn.Module):
     def __init__(self,
@@ -102,10 +107,9 @@ class GeneralizedRobustLoss(nn.Module):
         loss = 0
 
         if not isinstance(preds, tuple):
-            preds = (preds, )
+            preds = (preds,)
 
         for i in range(len(preds)):
             loss += self.loss_obj(preds[i], target)
 
         return loss
-

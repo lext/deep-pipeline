@@ -171,4 +171,3 @@ class AdaptiveLossFunction(nn.Module):
         nll = self.distribution.nllfun(residual, self.alpha(), self.scale())
 
         return nll.mean()
-

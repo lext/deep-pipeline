@@ -1,8 +1,10 @@
 import os
+
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold, GroupKFold, StratifiedKFold
+
 from deeppipeline.kvs import GlobalKVS
-import numpy as np
 
 
 def init_folds(img_group_id_colname=None, img_class_colname=None):

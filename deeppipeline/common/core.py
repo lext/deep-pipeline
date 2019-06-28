@@ -1,19 +1,21 @@
-import torch
-from typing import Callable
-import numpy as np
-import time
-from termcolor import colored
-import subprocess
-import socket
-from torch import optim
-from tqdm import tqdm
-import os
 import operator
-from deeppipeline.kvs import GlobalKVS
+import os
+import socket
+import subprocess
+import time
+
+import numpy as np
+import torch
 from tensorboardX import SummaryWriter
+from termcolor import colored
+from torch import nn
+from torch import optim
 from torch.optim import lr_scheduler
 from torchcontrib.optim import swa
-from torch import nn
+from tqdm import tqdm
+from torch.distributions import beta
+from deeppipeline.kvs import GlobalKVS
+
 
 def git_info():
     """
@@ -24,6 +26,7 @@ def git_info():
     out : tuple of str
         branch and commit id
     """
+
     def _minimal_ext_cmd(cmd):
         # construct minimal environment
         env = {}
@@ -71,7 +74,7 @@ def init_session(args):
 
     # Creating the snapshot
     snapshot_name = time.strftime(f'{socket.gethostname()}_%Y_%m_%d_%H_%M')
-    os.makedirs(os.path.join(args.workdir, 'snapshots',  snapshot_name), exist_ok=True)
+    os.makedirs(os.path.join(args.workdir, 'snapshots', snapshot_name), exist_ok=True)
 
     kvs = GlobalKVS(os.path.join(args.workdir, 'snapshots', snapshot_name, 'session.pkl'))
 
@@ -223,7 +226,7 @@ def save_checkpoint(net, loss, optimizer, val_metric_name, comparator='lt'):
     val_metric = kvs[f'val_metrics_fold_[{fold_id}]'][-1][0][val_metric_name]
     comparator = getattr(operator, comparator)
     cur_snapshot_name = os.path.join(os.path.join(kvs['args'].workdir, 'snapshots', kvs['snapshot_name'],
-                                     f'fold_{fold_id}_epoch_{epoch}.pth'))
+                                                  f'fold_{fold_id}_epoch_{epoch}.pth'))
 
     state = {'model': net.state_dict(), 'optimizer': optimizer.state_dict(), 'loss': loss.state_dict()}
     if kvs['prev_model'] is None:
@@ -240,33 +243,39 @@ def save_checkpoint(net, loss, optimizer, val_metric_name, comparator='lt'):
             kvs.update('prev_model', cur_snapshot_name)
             kvs.update('best_val_metric', val_metric)
 
+
 def bn_update_cb(model, train_loader, img_key):
     print(colored('==> ', 'red') + f'Updating BatchNorm Statistics after SWA')
     for batch in tqdm(train_loader, total=len(train_loader)):
         model(batch[img_key])
 
+
 def mixup(x, y, lam):
-    batch_size = x.size()[0]
-    index = torch.randperm(batch_size)
+    index = torch.randperm(x.size(0))
 
     mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
     return mixed_x, y_b
 
-def mixup_pass(net, criterion, alpha):
+
+def mixup_pass(net, criterion, inputs, targets, alpha, max_lambda=False):
     mixup_sampler = beta.Beta(alpha, alpha)
 
-    lam = mixup_sampler.sample().item()
-    mixed_inputs, shuffled_targets = mixup(inputs, target, lam)
+    lam = mixup_sampler.sample(inputs.size(0))
+    if max_lambda:
+        lam = torch.max(lam, 1-lam)
+
+    mixed_inputs, shuffled_targets = mixup(inputs, targets, lam)
 
     outputs = net(inputs)
     outputs_mixed = net(mixed_inputs)
 
-    loss_orig = criterion(outputs, target)
+    loss_orig = criterion(outputs, targets)
     loss_mixed = criterion(outputs_mixed, shuffled_targets)
 
     loss = lam * loss_orig + (1 - lam) * loss_mixed
     return loss
+
 
 def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, scheduler,
                log_metrics_cb=None, img_key=None):
@@ -419,7 +428,6 @@ def train_n_folds(init_args, init_metadata, init_augs,
 
         if kvs['args'].use_swa:
             optimizer = swa.SWA(optimizer, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
-
 
         train_loader, val_loader = init_loaders(x_train, x_val)
 

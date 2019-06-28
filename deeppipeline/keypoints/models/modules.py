@@ -1,7 +1,8 @@
-from deeppipeline.common.modules import Identity, conv_block_3x3, conv_block_1x1
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
+
+from deeppipeline.common.modules import Identity, conv_block_3x3, conv_block_1x1
 
 
 class HGResidual(nn.Module):
@@ -29,6 +30,7 @@ class MultiScaleHGResidual(nn.Module):
     https://arxiv.org/pdf/1808.04803.pdf
 
     """
+
     def __init__(self, n_inp, n_out):
         super().__init__()
         self.scale1 = conv_block_3x3(n_inp, n_out // 2, 'relu')
@@ -58,7 +60,7 @@ class SoftArgmax2D(nn.Module):
         bs, nc, h, w = hm.size()
         hm = hm.squeeze()
 
-        softmax = F.softmax(hm.view(bs, nc, h*w), dim=2).view(bs, nc, h, w)
+        softmax = F.softmax(hm.view(bs, nc, h * w), dim=2).view(bs, nc, h, w)
 
         weights = torch.ones(bs, nc, h, w).float().to(hm.device)
         w_x = torch.arange(w).float().div(w)
@@ -67,8 +69,8 @@ class SoftArgmax2D(nn.Module):
         w_y = torch.arange(h).float().div(h)
         w_y = w_y.to(hm.device).mul(weights.transpose(2, 3)).transpose(2, 3)
 
-        approx_x = softmax.mul(w_x).view(bs, nc, h*w).sum(2).unsqueeze(2)
-        approx_y = softmax.mul(w_y).view(bs, nc, h*w).sum(2).unsqueeze(2)
+        approx_x = softmax.mul(w_x).view(bs, nc, h * w).sum(2).unsqueeze(2)
+        approx_y = softmax.mul(w_y).view(bs, nc, h * w).sum(2).unsqueeze(2)
 
         res_xy = torch.cat([approx_x, approx_y], 2)
         return res_xy
@@ -115,4 +117,3 @@ class Hourglass(nn.Module):
         o2_u = self.upper2(o1_u)
         o3_u = self.upper3(o2_u)
         return o3_u + F.interpolate(self.lower5(o4), x.size()[-2:], mode=self.upmode, align_corners=True)
-

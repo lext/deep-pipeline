@@ -1,12 +1,12 @@
 from functools import partial
-from torchvision import transforms as tvt
 
 import solt.core as slc
 import solt.data as sld
 import solt.transforms as slt
+from torchvision import transforms as tvt
 
-from deeppipeline.kvs import GlobalKVS
 from deeppipeline.common.transforms import numpy2tens, apply_by_index
+from deeppipeline.kvs import GlobalKVS
 
 
 def img_binary_mask2solt(imgmask):
@@ -42,5 +42,3 @@ def init_binary_segmentation_augs():
     kvs.update('train_trf', ppl)
 
     return ppl
-
-
