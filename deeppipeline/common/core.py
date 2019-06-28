@@ -277,7 +277,7 @@ def mixup(x, y, lam):
 def mixup_pass(net, criterion, inputs, targets, alpha, max_lambda=False):
     mixup_sampler = beta.Beta(alpha, alpha)
 
-    lam = mixup_sampler.sample(inputs.size(0))
+    lam = mixup_sampler.sample().to(inputs.device)
     if max_lambda:
         lam = torch.max(lam, 1-lam)
 
