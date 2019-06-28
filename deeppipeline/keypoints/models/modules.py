@@ -5,8 +5,20 @@ from torch import nn
 from deeppipeline.common.modules import Identity, conv_block_3x3, conv_block_1x1
 
 
+class SEBlock(nn.Module):
+    def __init__(self, n_features, r=16):
+        super(SEBlock, self).__init__()
+        self.scorer = nn.Sequential(nn.AdaptiveAvgPool2d(1),
+                                    nn.Conv2d(n_features, n_features // r, kernel_size=1, padding=0, stride=1),
+                                    nn.ReLU(True),
+                                    nn.Conv2d(n_features // r, n_features, kernel_size=1, padding=0, stride=1))
+
+    def forward(self, x):
+        return torch.sigmoid(self.scorer(x))*x
+
+
 class HGResidual(nn.Module):
-    def __init__(self, n_inp, n_out):
+    def __init__(self, n_inp, n_out, se=False, se_ratio=16):
         super().__init__()
         self.bottleneck = conv_block_1x1(n_inp, n_out // 2, 'relu')
         self.conv = conv_block_3x3(n_out // 2, n_out // 2, 'relu')
@@ -17,10 +29,15 @@ class HGResidual(nn.Module):
         else:
             self.skip = Identity()
 
+        if se:
+            self.se_block = SEBlock(n_out, r=se_ratio)
+
     def forward(self, x):
         o1 = self.bottleneck(x)
         o2 = self.conv(o1)
         o3 = self.out(o2)
+        if hasattr(self, 'se_block'):
+            o3 = self.se_block(o3)
 
         return o3 + self.skip(x)
 
@@ -31,7 +48,7 @@ class MultiScaleHGResidual(nn.Module):
 
     """
 
-    def __init__(self, n_inp, n_out):
+    def __init__(self, n_inp, n_out, se=False, se_ratio=16):
         super().__init__()
         self.scale1 = conv_block_3x3(n_inp, n_out // 2, 'relu')
         self.scale2 = conv_block_3x3(n_out // 2, n_out // 4, 'relu')
@@ -41,13 +58,18 @@ class MultiScaleHGResidual(nn.Module):
             self.skip = conv_block_1x1(n_inp, n_out, None)
         else:
             self.skip = Identity()
+        if se:
+            self.se_block = SEBlock(n_out, r=se_ratio)
 
     def forward(self, x):
         o1 = self.scale1(x)
         o2 = self.scale2(o1)
         o3 = self.scale3(o2)
+        o4 = torch.cat([o1, o2, o3], 1)
+        if hasattr(self, 'se_block'):
+            o4 = self.se_block(o4)
 
-        return torch.cat([o1, o2, o3], 1) + self.skip(x)
+        return o4 + self.skip(x)
 
 
 class SoftArgmax2D(nn.Module):
@@ -77,18 +99,20 @@ class SoftArgmax2D(nn.Module):
 
 
 class Hourglass(nn.Module):
-    def __init__(self, n, hg_width, n_inp, n_out, upmode='nearest', multiscale_block=False):
+    def __init__(self, n, hg_width, n_inp, n_out, upmode='nearest', multiscale_block=False, se=False, se_ratio=16):
         super(Hourglass, self).__init__()
 
         self.multiscale_block = multiscale_block
         self.upmode = upmode
+        self.se = se
+        self.se_ratio = se_ratio
 
         self.lower1 = self.__make_block(n_inp, hg_width)
         self.lower2 = self.__make_block(hg_width, hg_width)
         self.lower3 = self.__make_block(hg_width, hg_width)
 
         if n > 1:
-            self.lower4 = Hourglass(n - 1, hg_width, hg_width, n_out, upmode)
+            self.lower4 = Hourglass(n - 1, hg_width, hg_width, n_out, upmode, se=False, se_ratio=16)
         else:
             self.lower4 = self.__make_block(hg_width, n_out)
 
@@ -100,9 +124,9 @@ class Hourglass(nn.Module):
 
     def __make_block(self, inp, out):
         if self.multiscale_block:
-            return MultiScaleHGResidual(inp, out)
+            return MultiScaleHGResidual(inp, out, self.se, self.se_ratio)
         else:
-            return HGResidual(inp, out)
+            return HGResidual(inp, out, self.se, self.se_ratio)
 
     def forward(self, x):
         o_pooled = F.max_pool2d(x, 2)
@@ -113,7 +137,10 @@ class Hourglass(nn.Module):
 
         o4 = self.lower4(o3)
 
+        o5 = self.lower5(o4)
+
         o1_u = self.upper1(x)
         o2_u = self.upper2(o1_u)
         o3_u = self.upper3(o2_u)
-        return o3_u + F.interpolate(self.lower5(o4), x.size()[-2:], mode=self.upmode, align_corners=True)
+
+        return o3_u + F.interpolate(o5, x.size()[-2:], mode=self.upmode, align_corners=True)
