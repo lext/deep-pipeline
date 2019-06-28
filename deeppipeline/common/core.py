@@ -85,7 +85,7 @@ def init_session(args):
         raise Warning('No experiment config has has been provided')
 
     # Creating the snapshot
-    snapshot_name = time.strftime(f'{socket.gethostname()}_%Y_%m_%d_%H_%M')
+    snapshot_name = time.strftime(f'{socket.gethostname()}_%Y_%m_%d_%H_%M_%S')
     os.makedirs(os.path.join(args.workdir, 'snapshots', snapshot_name), exist_ok=True)
 
     kvs = GlobalKVS(os.path.join(args.workdir, 'snapshots', snapshot_name, 'session.pkl'))
