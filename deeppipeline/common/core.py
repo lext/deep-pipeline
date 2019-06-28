@@ -15,6 +15,7 @@ from torchcontrib.optim import swa
 from tqdm import tqdm
 from torch.distributions import beta
 from deeppipeline.kvs import GlobalKVS
+import yaml
 
 
 def git_info():
@@ -72,11 +73,26 @@ def init_session(args):
     torch.cuda.manual_seed(args.seed)
     np.random.seed(args.seed)
 
+    if args.experiment_config != '':
+        with open(args.experiment_config, 'r') as f:
+            conf = yaml.load(f)
+        for category in conf:
+            for arg in conf[category]:
+                key = list(arg.keys())[0]
+                setattr(args, key, arg[key])
+    else:
+        conf = None
+        raise Warning('No experiment config has has been provided')
+
     # Creating the snapshot
     snapshot_name = time.strftime(f'{socket.gethostname()}_%Y_%m_%d_%H_%M')
     os.makedirs(os.path.join(args.workdir, 'snapshots', snapshot_name), exist_ok=True)
 
     kvs = GlobalKVS(os.path.join(args.workdir, 'snapshots', snapshot_name, 'session.pkl'))
+    if conf is not None:
+        kvs.update('config', conf)
+        with open(os.path.join(args.workdir, 'snapshots', snapshot_name, 'config.yml'), 'w') as conf_file:
+            yaml.dump(conf, conf_file)
 
     res = git_info()
     if res is not None:
