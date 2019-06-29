@@ -263,7 +263,7 @@ def save_checkpoint(net, loss, optimizer, val_metric_name, comparator='lt'):
 def bn_update_cb(model, train_loader, img_key):
     print(colored('==> ', 'red') + f'Updating BatchNorm Statistics after SWA')
     for batch in tqdm(train_loader, total=len(train_loader)):
-        model(batch[img_key])
+        model(batch[img_key].to('cuda'))
 
 
 def mixup(x, y, lam):
