@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def cumulative_error_plot(errors, labels, title, colors=None, units='mm'):
+def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=5, save_plot=None):
     """
     Plots a cumulative curve. Useful for e.g. landmark detection.
 
@@ -30,7 +30,7 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm'):
         sorted_data = np.sort(errors[:, i])
         if labels is not None:
             if colors is not None:
-                plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size, label=labels[i], colors=colors[i])
+                plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size, label=labels[i], color=colors[i])
             else:
                 plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size, label=labels[i])
         else:
@@ -39,13 +39,17 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm'):
             else:
                 plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size)
 
-    plt.xlim(0, 4)
+    plt.xlim(0, limit)
     plt.ylim(0, 1)
-    plt.ylabel('Recall [%]')
+    plt.ylabel('Recall (normalized)')
     plt.xlabel(f'Distance from GT [f{units}]')
     plt.grid()
     if title is not None:
         plt.title(title)
     if labels is not None:
         plt.legend()
-    plt.show()
+    if save_plot is not None:
+        plt.savefig(save_plot, bbox_inches='tight', dpi=300)
+        plt.close()
+    else:
+        plt.show()
