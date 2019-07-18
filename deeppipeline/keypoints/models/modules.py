@@ -112,7 +112,8 @@ class Hourglass(nn.Module):
         self.lower3 = self.__make_block(hg_width, hg_width)
 
         if n > 1:
-            self.lower4 = Hourglass(n - 1, hg_width, hg_width, n_out, upmode, se=False, se_ratio=16)
+            self.lower4 = Hourglass(n - 1, hg_width, hg_width, n_out, upmode, multiscale_block,
+                                    se=se, se_ratio=se_ratio)
         else:
             self.lower4 = self.__make_block(hg_width, n_out)
 
