@@ -25,7 +25,8 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=
     out : None
         Plots the cumulative curves.
     """
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
+    plt.rcParams['font.size'] = 20
     for i in range(errors.shape[1]):
         sorted_data = np.sort(errors[:, i])
         if labels is not None:
@@ -40,16 +41,17 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=
                 plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size)
 
     plt.xlim(0, limit)
-    plt.ylim(0, 1)
-    plt.ylabel('Recall (normalized)')
+    plt.yticks(np.arange(0, 1.01, 0.1), np.arange(0, 110, 10))
+    plt.ylim(0,1)
+    plt.ylabel('Recall [%]')
     plt.xlabel(f'Distance from GT [f{units}]')
     plt.grid()
     if title is not None:
         plt.title(title)
     if labels is not None:
-        plt.legend()
+        plt.legend(loc=4)
     if save_plot is not None:
-        plt.savefig(save_plot, bbox_inches='tight', dpi=300)
+        plt.savefig(save_plot, bbox_inches='tight')
         plt.close()
     else:
         plt.show()
