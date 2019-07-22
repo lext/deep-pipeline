@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=5, save_plot=None):
+def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=5, save_plot=None, font_size=None):
     """
     Plots a cumulative curve. Useful for e.g. landmark detection.
 
@@ -26,7 +26,7 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=
         Plots the cumulative curves.
     """
     plt.figure(figsize=(8, 8))
-    plt.rcParams['font.size'] = 20
+    plt.rcParams['font.size'] = 20 if font_size is None else font_size
     for i in range(errors.shape[1]):
         sorted_data = np.sort(errors[:, i])
         if labels is not None:
@@ -41,7 +41,7 @@ def cumulative_error_plot(errors, labels, title, colors=None, units='mm', limit=
                 plt.step(sorted_data, np.arange(sorted_data.size) / sorted_data.size)
 
     plt.xlim(0, limit)
-    plt.yticks(np.arange(0, 1.01, 0.1), np.arange(0, 110, 10))
+    plt.yticks(np.arange(0, 1.01, 0.2), np.arange(0, 110, 20))
     plt.ylim(0,1)
     plt.ylabel('Recall [%]')
     plt.xlabel(f'Distance from GT [f{units}]')
