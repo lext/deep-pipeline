@@ -2,6 +2,7 @@ import operator
 import os
 import socket
 import subprocess
+import random
 import time
 
 import numpy as np
@@ -72,6 +73,7 @@ def init_session(args):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     np.random.seed(args.seed)
+    random.seed(args.seed)
 
     if args.experiment_config != '':
         with open(args.experiment_config, 'r') as f:
