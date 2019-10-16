@@ -17,6 +17,7 @@ from tqdm import tqdm
 from torch.distributions import beta
 from deeppipeline.kvs import GlobalKVS
 import yaml
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 def git_info():
@@ -77,11 +78,7 @@ def init_session(args):
 
     if args.experiment_config != '':
         with open(args.experiment_config, 'r') as f:
-            conf = yaml.load(f)
-        for category in conf:
-            for arg in conf[category]:
-                key = list(arg.keys())[0]
-                setattr(args, key, arg[key])
+            conf = yaml.safe_load(f)
     else:
         conf = None
         raise Warning('No experiment config has has been provided')
@@ -185,7 +182,7 @@ def log_metrics(writer, train_loss, val_loss, val_results, val_results_callback=
     to_log = {'train_loss': train_loss, 'val_loss': val_loss}
     val_metrics = {'epoch': kvs['cur_epoch']}
     val_metrics.update(to_log)
-    writer.add_scalars(f"Losses_{kvs['args'].annotations}", to_log, kvs['cur_epoch'])
+    writer.add_scalars(f"Losses_{kvs['args'].experiment_tag}", to_log, kvs['cur_epoch'])
     if val_results_callback is not None:
         val_results_callback(writer, val_metrics, to_log, val_results)
 
@@ -296,7 +293,7 @@ def mixup_pass(net, criterion, inputs, targets, alpha, max_lambda=False):
 
 
 def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, scheduler,
-               log_metrics_cb=None, img_key=None):
+               save_by='val_loss', cmp='lt', log_metrics_cb=None, img_key=None):
     """
     A common implementation of training one fold of a neural network. Presumably, it should be called
     within cross-validation loop.
@@ -317,6 +314,11 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
         Validation data loader
     scheduler : lr_scheduler.Scheduler
         Learning rate scheduler
+    save_by: str
+        Name of the metric used to save the snapshot. Val loss by default.
+        Also, ReduceOnPlateau will use this metric to drop LR.
+    cmp: str
+        Comparator for saving the snapshots. Can be `lt` (less than) or `gt` -- (greater than).
     log_metrics_cb : Callable or None
         Callback that processes the artifacts from validation stage.
     img_key : str
@@ -333,7 +335,8 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
 
     for epoch in range(kvs['args'].n_epochs):
         if scheduler is not None:
-            print(colored('==> ', 'green') + f'Training epoch [{epoch}] with LR {scheduler.get_lr()}')
+            lrs = [param_group['lr'] for param_group in optimizer.param_groups]
+            print(colored('==> ', 'green') + f'Training epoch [{epoch}] with LR {lrs}')
         else:
             print(colored('==> ', 'green') + f'Training epoch [{epoch}]')
         kvs.update('cur_epoch', epoch)
@@ -345,9 +348,12 @@ def train_fold(pass_epoch, net, train_loader, optimizer, criterion, val_loader, 
 
         val_loss, val_results = pass_epoch(net, val_loader, None, criterion)
         log_metrics(writer, train_loss, val_loss, val_results, log_metrics_cb)
-        save_checkpoint(net, criterion, optimizer, 'val_loss', 'lt')
+        save_checkpoint(net, criterion, optimizer, save_by, cmp)
         if scheduler is not None:
-            scheduler.step()
+            if isinstance(scheduler, ReduceLROnPlateau):
+                scheduler.step(kvs[f'val_metrics_fold_[{kvs["cur_fold"]}]'][-1][0][save_by])
+            else:
+                scheduler.step()
 
 
 def train_n_folds(init_args, init_metadata, init_augs,
@@ -358,6 +364,7 @@ def train_n_folds(init_args, init_metadata, init_augs,
                   init_optimizer,
                   init_scheduler,
                   pass_epoch, log_metrics_cb,
+                  save_by='val_loss', cmp='lt',
                   img_key=None,
                   img_group_id_colname=None,
                   img_class_colname=None):
@@ -396,6 +403,11 @@ def train_n_folds(init_args, init_metadata, init_augs,
         Initializes the scheduler
     pass_epoch : Callable
         Trains / validaties one epoch.
+    save_by: str
+        Name of the metric used to save the snapshot. Val loss by default.
+        Also, ReduceOnPlateau will use this metric to drop LR.
+    cmp: str
+        Comparator for saving the snapshots. Can be `lt` (less than) or `gt` -- (greater than).
     log_metrics_cb : Callable or None
         Callback to process the artifacts of the validation function.
     img_key : str
@@ -431,25 +443,28 @@ def train_n_folds(init_args, init_metadata, init_augs,
         kvs.update('prev_model', None)
 
         net = init_model()
-        if kvs['args'].multi_gpu and kvs['gpus'] > 1:
-            net = nn.DataParallel(net).to('cuda')
 
         criterion = init_loss()
         if init_optimizer is None:
             optimizer = init_optimizer_default(net, criterion)
         else:
             optimizer = init_optimizer(net, criterion)
+
+        if kvs['args'].multi_gpu and kvs['gpus'] > 1:
+            net = nn.DataParallel(net).to('cuda')
+
         if init_scheduler is None:
             scheduler = None
         else:
             scheduler = init_scheduler(optimizer)
-
-        if kvs['args'].use_swa:
-            optimizer = swa.SWA(optimizer, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
+        if hasattr(kvs['args'], 'use_swa'):
+            if kvs['args'].use_swa:
+                optimizer = swa.SWA(optimizer, kvs['args'].swa_start, kvs['args'].swa_freq, kvs['args'].swa_lr)
 
         train_loader, val_loader = init_loaders(x_train, x_val)
 
         train_fold(pass_epoch=pass_epoch, net=net, train_loader=train_loader,
                    optimizer=optimizer, criterion=criterion,
                    val_loader=val_loader, scheduler=scheduler,
+                   save_by=save_by, cmp=cmp,
                    log_metrics_cb=log_metrics_cb, img_key=img_key)
