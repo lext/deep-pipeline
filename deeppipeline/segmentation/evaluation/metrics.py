@@ -78,3 +78,35 @@ def calculate_volumetric_similarity(confusion_matrix):
         scores.append(vd)
 
     return scores
+
+
+def compute_dice_binary(m1, m2, eps=1e-8):
+    """
+    Computes dice for two binary torch tensors
+    on device.
+
+    """
+    if m1.sum() == 0 and m2.sum() == 0:
+        return 1
+
+    a = (m1 * m2).sum().add(eps)
+    b = (m1.sum() + m2.sum()).add(eps)
+
+    result = a.mul(2).div(b)
+
+    return result.item()
+
+
+def compute_multilabel_avg_dice(outputs, target, thresholds):
+    """
+    Computes dices for each element in the mini-batch for each label
+    in a multi-label setting
+    """
+    dices = []
+    for idx in range(outputs.size(0)):
+        for cls in range(outputs.size(1)):
+            o = outputs[idx, cls].sigmoid().ge(thresholds[cls]).float().squeeze()
+            t = target[idx, cls].squeeze()
+            d = compute_dice_binary(o, t)
+            dices.append(d)
+    return dices
