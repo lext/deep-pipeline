@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 requirements = ('numpy', 'opencv-python',
                 'torch>=1.0.0', 'solt>=0.1.5', 'torchvision', 'tqdm',
                 'termcolor', 'tensorflow', 'tensorboardx',
-                'scikit-learn', 'pandas', 'mpmath==1.1.0', 'torchcontrib==0.0.2')
+                'scikit-learn', 'pandas', 'mpmath==1.3.0', 'torchcontrib==0.0.2')
 
 setup_requirements = ()
 
